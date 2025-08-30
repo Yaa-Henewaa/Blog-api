@@ -10,7 +10,17 @@ namespace Blogs.API.Data
         public BlogDbContext(DbContextOptions options) : base(options)
         {
 
+
+        }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<BlogPost>()
+                .Property(b => b.BlogId)
+                .HasDefaultValueSql("gen_random_uuid()");
         }
         public DbSet <BlogPost> BlogPosts { get; set; }
+        
     }
 }

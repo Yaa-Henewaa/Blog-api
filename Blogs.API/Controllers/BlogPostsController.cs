@@ -28,84 +28,119 @@ namespace Blogs.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BlogPost>>> GetBlogPosts()
         {
-            return await _context.BlogPosts.ToListAsync();
+            try
+            {
+                var posts = await _context.BlogPosts.ToListAsync();
+                if (posts == null || !posts.Any())
+                    return NotFound(new { message = "No blog posts found." });
+                return Ok(posts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving blog posts.", error = ex.Message });
+            }
         }
 
         // GET: api/BlogPosts/5
         [HttpGet("{id}")]
         public async Task<ActionResult<BlogPost>> GetBlogPost(int id)
         {
-            var blogPost = await _context.BlogPosts.FindAsync(id);
-
-            if (blogPost == null)
+            try
             {
-                return NotFound();
-            }
+                var blogPost = await _context.BlogPosts.FindAsync(id);
 
-            return blogPost;
+                if (blogPost == null)
+                {
+                    return NotFound(new { message = $"Blog postwith ID {id} not found." });
+                }
+
+                return Ok(blogPost);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving the blog post.", error = ex.Message });
+            }
         }
 
         // PUT: api/BlogPosts/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+       
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutBlogPost(int id, BlogPost blogPost)
+        public async Task<IActionResult> PutBlogPost(int id, [FromBody] UpdateBlogPostDTO updateblogPostdto)
         {
-            if (id != blogPost.BlogId)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(blogPost).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!BlogPostExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+                var existingPost = await _context.BlogPosts.FindAsync(id);
+                if (existingPost == null)
+                    return NotFound(new { message = $"Blog post with ID {id} not found." });
 
-            return NoContent();
+                existingPost.BlogTitle = updateblogPostdto.BlogTitle;
+                existingPost.BlogDescription = updateblogPostdto.BlogDescription;
+                existingPost.BlogAuthor = updateblogPostdto.BlogAuthor;
+                existingPost.BlogContent = updateblogPostdto.BlogContent;
+
+                _context.Entry(existingPost).State = EntityState.Modified;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Blog post updated successfully.", blogPost = existingPost });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while updating the blog post.", error = ex.Message });
+            }
         }
 
         // POST: api/BlogPosts
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        
         [HttpPost]
-        public async Task<ActionResult<BlogPost>> PostBlogPost(BlogPost blogPost)
+        public async Task<ActionResult<BlogPost>> PostBlogPost([FromBody] AddBlogPostDTO blogPostdto)
         {
-            _context.BlogPosts.Add(blogPost);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var blogPost = new BlogPost
+                {
+                    BlogTitle = blogPostdto.BlogTitle,
+                    BlogDescription = blogPostdto.BlogDescription,
+                    BlogAuthor = blogPostdto.BlogAuthor,
+                    BlogContent = blogPostdto.BlogContent,
+                };
+                _context.BlogPosts.Add(blogPost);
+                await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetBlogPost", new { id = blogPost.BlogId }, blogPost);
+                return CreatedAtAction(nameof(GetBlogPost), new { id = blogPost.BlogId }, blogPost);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while creating the blog post.", error = ex.Message });
+            }
         }
 
         // DELETE: api/BlogPosts/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBlogPost(int id)
         {
-            var blogPost = await _context.BlogPosts.FindAsync(id);
-            if (blogPost == null)
+            try
             {
-                return NotFound();
+                var blogPost = await _context.BlogPosts.FindAsync(id);
+                if (blogPost == null)
+                {
+                    return NotFound(new { message = $"Blog postwith ID {id} not found." });
+                }
+
+                _context.BlogPosts.Remove(blogPost);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Blog post deleted successfully.", blogPost });
             }
-
-            _context.BlogPosts.Remove(blogPost);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while deleting the blog post.", error = ex.Message });
+            }
         }
 
-        private bool BlogPostExists(int id)
-        {
-            return _context.BlogPosts.Any(e => e.BlogId == id);
-        }
+        //private bool BlogPostExists(int id)
+        //{
+        //    return _context.BlogPosts.Any(e => e.BlogId == id);
+        //}
     }
 }
